@@ -199,7 +199,8 @@ function sendMsg() {
         var res = JSON.parse(xhr.responseText);
         addMsg(res.text || '(üres válasz)', 'bot');
         if (res.mediaUrl) {
-          audioEl.src = BASE + '/' + res.mediaUrl.replace(/^//, '');
+          var murl = res.mediaUrl.charAt(0) === '/' ? res.mediaUrl : '/' + res.mediaUrl;
+          audioEl.src = BASE + murl;
           audioEl.play();
         }
       } catch (e) {
