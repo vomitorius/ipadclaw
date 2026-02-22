@@ -13,6 +13,17 @@ async function loadConfig() {
 function router(req, res, config) {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
+  // Auth check for /chat endpoint
+  if (url.pathname === '/chat') {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!config.token || token !== config.token) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+  }
+
   if (url.pathname === '/health' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
