@@ -1,0 +1,14 @@
+{
+  "name": "ipadclaw",
+  "version": "1.0.0",
+  "description": "iOS 9 compatible web chat bridge for OpenClaw",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
