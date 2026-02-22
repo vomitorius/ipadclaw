@@ -135,7 +135,7 @@
   <button id="loginBtn" onclick="doLogin()">Belépés</button>
 </div>
 
-<div id="header">iPadClaw</div>
+<div id="header">iPadClaw <button onclick="logout()" style="float:right;background:none;border:none;color:#e94560;font-size:14px;cursor:pointer;padding:0">Kilépés</button></div>
 <div id="chat"></div>
 <audio id="audio"></audio>
 <div id="footer">
@@ -167,6 +167,14 @@ input.addEventListener('keydown', function(e) {
 tokenInput.addEventListener('keydown', function(e) {
   if (e.keyCode === 13) { doLogin(); }
 });
+
+function logout() {
+  localStorage.removeItem('ipadclaw_token');
+  TOKEN = '';
+  loginDiv.style.display = '';
+  tokenInput.value = '';
+  chat.innerHTML = '';
+}
 
 function doLogin() {
   var t = tokenInput.value.trim();
