@@ -47,6 +47,10 @@ export function callAgent(config, message) {
     let stdout = '';
     let stderr = '';
 
+    proc.on('error', (err) => {
+      reject(new Error(`Failed to spawn openclaw: ${err.message}`));
+    });
+
     proc.stdout.on('data', d => stdout += d);
     proc.stderr.on('data', d => stderr += d);
 
@@ -80,8 +84,20 @@ function router(req, res, config) {
 
   if (url.pathname === '/chat' && req.method === 'POST') {
     let body = '';
-    req.on('data', chunk => body += chunk);
+    let bodySize = 0;
+    const MAX_BODY = 64 * 1024;
+    req.on('data', chunk => {
+      bodySize += chunk.length;
+      if (bodySize > MAX_BODY) {
+        res.writeHead(413, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Payload too large' }));
+        req.resume();
+        return;
+      }
+      body += chunk;
+    });
     req.on('end', async () => {
+      if (bodySize > MAX_BODY) return; // már kezeltük
       try {
         const { text } = JSON.parse(body);
         if (!text || typeof text !== 'string') {
@@ -128,7 +144,14 @@ export async function startServer(port) {
   const listenPort = port !== undefined ? port : config.port;
 
   const server = http.createServer((req, res) => {
-    router(req, res, config);
+    try {
+      router(req, res, config);
+    } catch (e) {
+      if (!res.headersSent) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Bad request' }));
+      }
+    }
   });
 
   await new Promise(resolve => server.listen(listenPort, '0.0.0.0', resolve));

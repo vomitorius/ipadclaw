@@ -1,6 +1,6 @@
 [Unit]
 Description=iPadClaw HTTP Bridge for OpenClaw
-After=network.target
+After=network.target openclaw.service
 
 [Service]
 Type=simple

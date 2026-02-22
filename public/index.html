@@ -57,7 +57,6 @@
       padding: 10px;
       display: -webkit-flex;
       display: flex;
-      gap: 8px;
     }
     #input {
       -webkit-flex: 1;
@@ -69,6 +68,7 @@
       color: #eee;
       font-size: 16px;
       outline: none;
+      margin-right: 8px;
     }
     #send {
       padding: 12px 20px;
@@ -128,15 +128,15 @@
 <div id="login">
   <h1>iPadClaw</h1>
   <input id="tokenInput" type="password" placeholder="Token" autocomplete="off">
-  <button id="loginBtn" onclick="doLogin()">Belepes</button>
+  <button id="loginBtn" onclick="doLogin()">Belépés</button>
 </div>
 
 <div id="header">iPadClaw</div>
 <div id="chat"></div>
 <audio id="audio"></audio>
 <div id="footer">
-  <input id="input" type="text" placeholder="Irj vagy diktAlj..." autocomplete="off">
-  <button id="send" onclick="sendMsg()">Kuld</button>
+  <input id="input" type="text" placeholder="Írj vagy diktálj..." autocomplete="off">
+  <button id="send" onclick="sendMsg()">Küld</button>
 </div>
 
 <script>
@@ -161,7 +161,7 @@ function doLogin() {
   if (!t) return;
   TOKEN = t;
   loginDiv.style.display = 'none';
-  addMsg('Csatlakozva. Miben segithetek?', 'bot');
+  addMsg('Csatlakozva. Miben segíthetek?', 'bot');
 }
 
 function addMsg(text, cls) {
@@ -197,7 +197,7 @@ function sendMsg() {
     if (xhr.status === 200) {
       try {
         var res = JSON.parse(xhr.responseText);
-        addMsg(res.text || '(ures valasz)', 'bot');
+        addMsg(res.text || '(üres válasz)', 'bot');
         if (res.mediaUrl) {
           audioEl.src = SERVER + res.mediaUrl;
           audioEl.play();
@@ -206,7 +206,7 @@ function sendMsg() {
         addMsg('Parse hiba: ' + e.message, 'error');
       }
     } else if (xhr.status === 401) {
-      addMsg('Hibas token! Toltsd ujra az oldalt.', 'error');
+      addMsg('Hibás token! Töltsd újra az oldalt.', 'error');
     } else {
       addMsg('Hiba: HTTP ' + xhr.status, 'error');
     }
@@ -215,7 +215,7 @@ function sendMsg() {
   xhr.ontimeout = function() {
     chat.removeChild(thinking);
     sendBtn.disabled = false;
-    addMsg('Idotullepes (2 perc). Probald ujra.', 'error');
+    addMsg('Időtúllépés (2 perc). Próbáld újra.', 'error');
   };
 
   xhr.send(JSON.stringify({ text: text }));
