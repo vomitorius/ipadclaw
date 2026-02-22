@@ -95,10 +95,9 @@
       align-items: center;
       -webkit-justify-content: center;
       justify-content: center;
-      gap: 16px;
       padding: 20px;
     }
-    #login h1 { color: #e94560; font-size: 28px; }
+    #login h1 { color: #e94560; font-size: 28px; margin-bottom: 20px; }
     #tokenInput {
       width: 100%;
       max-width: 340px;
@@ -108,6 +107,7 @@
       background: #16213e;
       color: #eee;
       font-size: 18px;
+      margin-bottom: 16px;
     }
     #loginBtn {
       width: 100%;
@@ -141,7 +141,7 @@
 
 <script>
 var TOKEN = '';
-var SERVER = window.location.origin;
+var BASE = window.location.href.replace(//[^/]*$/, '').replace(//+$/, '');
 var chat = document.getElementById('chat');
 var input = document.getElementById('input');
 var sendBtn = document.getElementById('send');
@@ -184,7 +184,7 @@ function sendMsg() {
   var thinking = addMsg('Gondolkodik...', 'thinking');
 
   var xhr = new XMLHttpRequest();
-  xhr.open('POST', SERVER + '/chat', true);
+  xhr.open('POST', BASE + '/chat', true);
   xhr.setRequestHeader('Content-Type', 'application/json');
   xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
   xhr.timeout = 120000;
@@ -199,7 +199,7 @@ function sendMsg() {
         var res = JSON.parse(xhr.responseText);
         addMsg(res.text || '(üres válasz)', 'bot');
         if (res.mediaUrl) {
-          audioEl.src = SERVER + res.mediaUrl;
+          audioEl.src = BASE + '/' + res.mediaUrl.replace(/^//, '');
           audioEl.play();
         }
       } catch (e) {
