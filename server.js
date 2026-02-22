@@ -40,7 +40,8 @@ export function callAgent(config, message) {
 
     const env = {
       ...process.env,
-      XDG_RUNTIME_DIR: `/run/user/${process.getuid()}`
+      XDG_RUNTIME_DIR: `/run/user/${process.getuid()}`,
+      PATH: `/home/linuxbrew/.linuxbrew/bin:${process.env.PATH}`
     };
 
     const proc = spawn(config.openclaw, args, { env });
