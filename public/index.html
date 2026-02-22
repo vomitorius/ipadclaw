@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>iPadClaw</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, Helvetica, Arial, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      height: 100vh;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+    }
+    #header {
+      background: #16213e;
+      padding: 12px 16px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #e94560;
+      border-bottom: 1px solid #0f3460;
+    }
+    #chat {
+      -webkit-flex: 1;
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+    }
+    .msg {
+      margin: 8px 0;
+      padding: 10px 14px;
+      border-radius: 16px;
+      max-width: 85%;
+      word-wrap: break-word;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+    .msg.user {
+      background: #0f3460;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      background: #16213e;
+      border: 1px solid #0f3460;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.error { background: #5a1a1a; color: #ff8888; }
+    .msg.thinking { color: #888; font-style: italic; }
+    #footer {
+      background: #16213e;
+      border-top: 1px solid #0f3460;
+      padding: 10px;
+      display: -webkit-flex;
+      display: flex;
+      gap: 8px;
+    }
+    #input {
+      -webkit-flex: 1;
+      flex: 1;
+      padding: 12px;
+      border-radius: 22px;
+      border: 1px solid #0f3460;
+      background: #1a1a2e;
+      color: #eee;
+      font-size: 16px;
+      outline: none;
+    }
+    #send {
+      padding: 12px 20px;
+      border-radius: 22px;
+      border: none;
+      background: #e94560;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      min-width: 70px;
+    }
+    #send:active { opacity: 0.7; }
+    #send:disabled { background: #555; }
+    #audio { display: none; }
+    #login {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: #1a1a2e;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-flex-direction: column;
+      flex-direction: column;
+      -webkit-align-items: center;
+      align-items: center;
+      -webkit-justify-content: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 20px;
+    }
+    #login h1 { color: #e94560; font-size: 28px; }
+    #tokenInput {
+      width: 100%;
+      max-width: 340px;
+      padding: 14px;
+      border-radius: 10px;
+      border: 1px solid #0f3460;
+      background: #16213e;
+      color: #eee;
+      font-size: 18px;
+    }
+    #loginBtn {
+      width: 100%;
+      max-width: 340px;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      background: #e94560;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div id="login">
+  <h1>iPadClaw</h1>
+  <input id="tokenInput" type="password" placeholder="Token" autocomplete="off">
+  <button id="loginBtn" onclick="doLogin()">Belepes</button>
+</div>
+
+<div id="header">iPadClaw</div>
+<div id="chat"></div>
+<audio id="audio"></audio>
+<div id="footer">
+  <input id="input" type="text" placeholder="Irj vagy diktAlj..." autocomplete="off">
+  <button id="send" onclick="sendMsg()">Kuld</button>
+</div>
+
+<script>
+var TOKEN = '';
+var SERVER = window.location.origin;
+var chat = document.getElementById('chat');
+var input = document.getElementById('input');
+var sendBtn = document.getElementById('send');
+var audioEl = document.getElementById('audio');
+var loginDiv = document.getElementById('login');
+var tokenInput = document.getElementById('tokenInput');
+
+input.addEventListener('keydown', function(e) {
+  if (e.keyCode === 13) { sendMsg(); }
+});
+tokenInput.addEventListener('keydown', function(e) {
+  if (e.keyCode === 13) { doLogin(); }
+});
+
+function doLogin() {
+  var t = tokenInput.value.trim();
+  if (!t) return;
+  TOKEN = t;
+  loginDiv.style.display = 'none';
+  addMsg('Csatlakozva. Miben segithetek?', 'bot');
+}
+
+function addMsg(text, cls) {
+  var div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+function sendMsg() {
+  var text = input.value.trim();
+  if (!text || sendBtn.disabled) return;
+
+  addMsg(text, 'user');
+  input.value = '';
+  sendBtn.disabled = true;
+
+  var thinking = addMsg('Gondolkodik...', 'thinking');
+
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', SERVER + '/chat', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+  xhr.timeout = 120000;
+
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    chat.removeChild(thinking);
+    sendBtn.disabled = false;
+
+    if (xhr.status === 200) {
+      try {
+        var res = JSON.parse(xhr.responseText);
+        addMsg(res.text || '(ures valasz)', 'bot');
+        if (res.mediaUrl) {
+          audioEl.src = SERVER + res.mediaUrl;
+          audioEl.play();
+        }
+      } catch (e) {
+        addMsg('Parse hiba: ' + e.message, 'error');
+      }
+    } else if (xhr.status === 401) {
+      addMsg('Hibas token! Toltsd ujra az oldalt.', 'error');
+    } else {
+      addMsg('Hiba: HTTP ' + xhr.status, 'error');
+    }
+  };
+
+  xhr.ontimeout = function() {
+    chat.removeChild(thinking);
+    sendBtn.disabled = false;
+    addMsg('Idotullepes (2 perc). Probald ujra.', 'error');
+  };
+
+  xhr.send(JSON.stringify({ text: text }));
+}
+</script>
+</body>
+</html>

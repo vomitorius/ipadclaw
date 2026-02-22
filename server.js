@@ -1,10 +1,19 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { createReadStream, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css',
+  '.js': 'application/javascript',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4'
+};
 
 async function loadConfig() {
   const raw = await readFile(path.join(__dirname, 'config.json'), 'utf8');
@@ -95,6 +104,19 @@ function router(req, res, config) {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ ok: true }));
     return;
+  }
+
+  // Static file serving from public/
+  if (req.method === 'GET') {
+    const safePath = url.pathname === '/' ? '/index.html' : url.pathname;
+    const filePath = path.join(__dirname, 'public', path.normalize(safePath));
+    const ext = path.extname(filePath);
+
+    if (filePath.startsWith(path.join(__dirname, 'public')) && existsSync(filePath)) {
+      res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream' });
+      createReadStream(filePath).pipe(res);
+      return;
+    }
   }
 
   res.writeHead(404);
