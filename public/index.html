@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>iPadClaw</title>
+  <title>VomyClaw</title>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="iPadClaw">
+  <meta name="apple-mobile-web-app-title" content="VomyClaw">
   <link rel="apple-touch-icon" href="icon.png">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -22,16 +22,40 @@
     }
     #header {
       background: #16213e;
-      padding: 12px 16px;
-      font-size: 18px;
-      font-weight: bold;
-      color: #e94560;
+      padding: 0 16px;
       border-bottom: 1px solid #0f3460;
+      display: -webkit-flex;
+      display: flex;
+      -webkit-align-items: center;
+      align-items: center;
+      min-height: 48px;
     }
-    #chat {
+    .tab-btn {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 15px;
+      font-weight: bold;
+      padding: 14px 16px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active {
+      color: #e94560;
+      border-bottom: 2px solid #e94560;
+    }
+    #tab-chat-panel {
       -webkit-flex: 1;
       flex: 1;
       overflow-y: auto;
+      padding: 12px;
+    }
+    #tab-calendar-panel {
+      display: none;
+      -webkit-flex: 1;
+      flex: 1;
+      overflow-y: auto;
+      background: #1a1a2e;
       padding: 12px;
     }
     .msg {
@@ -55,7 +79,7 @@
     }
     .msg.error { background: #5a1a1a; color: #ff8888; }
     .msg.thinking { color: #888; font-style: italic; }
-    #footer {
+    #chat-footer {
       background: #16213e;
       border-top: 1px solid #0f3460;
       padding: 10px;
@@ -130,15 +154,43 @@
 <body>
 
 <div id="login">
-  <h1>iPadClaw</h1>
+  <h1>VomyClaw</h1>
   <input id="tokenInput" type="password" placeholder="Token" autocomplete="off">
   <button id="loginBtn" onclick="doLogin()">Belépés</button>
 </div>
 
-<div id="header">iPadClaw <button onclick="logout()" style="float:right;background:none;border:none;color:#e94560;font-size:14px;cursor:pointer;padding:0">Kilépés</button></div>
-<div id="chat"></div>
+<div id="header">
+  <button class="tab-btn active" id="tab-chat" onclick="showTab('chat')">Chat</button>
+  <button class="tab-btn" id="tab-calendar" onclick="showTab('calendar')">Naptár</button>
+  <button onclick="logout()" style="margin-left:auto;background:none;border:none;color:#e94560;font-size:14px;cursor:pointer;padding:4px 8px">Kilépés</button>
+</div>
+
+<!-- Chat panel -->
+<div id="tab-chat-panel">
+  <div id="chat"></div>
+</div>
+
+<!-- Calendar panel -->
+<div id="tab-calendar-panel">
+  <div id="cal-nav" style="display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;margin-bottom:12px">
+    <button id="cal-prev" onclick="calPrev()" style="background:#16213e;border:1px solid #0f3460;color:#eee;padding:8px 14px;border-radius:8px;font-size:18px;cursor:pointer">&#8249;</button>
+    <span id="cal-title" style="font-weight:bold;font-size:16px;color:#eee"></span>
+    <button id="cal-next" onclick="calNext()" style="background:#16213e;border:1px solid #0f3460;color:#eee;padding:8px 14px;border-radius:8px;font-size:18px;cursor:pointer">&#8250;</button>
+  </div>
+  <div id="cal-grid"></div>
+  <div id="cal-events" style="margin-top:12px"></div>
+</div>
+
+<!-- Event detail popup -->
+<div id="cal-popup" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:100" onclick="closePopup()">
+  <div style="background:#16213e;border:1px solid #0f3460;border-radius:12px;padding:20px;margin:60px 20px;position:relative" onclick="event.stopPropagation()">
+    <div id="cal-popup-content"></div>
+    <button onclick="closePopup()" style="margin-top:16px;width:100%;padding:12px;background:#e94560;border:none;border-radius:8px;color:white;font-size:16px;cursor:pointer">Bezárás</button>
+  </div>
+</div>
+
 <audio id="audio"></audio>
-<div id="footer">
+<div id="chat-footer" style="background:#16213e;border-top:1px solid #0f3460;padding:10px;display:-webkit-flex;display:flex">
   <input id="input" type="text" placeholder="Írj vagy diktálj..." autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
   <button id="send" onclick="sendMsg()">Küld</button>
 </div>
@@ -154,7 +206,7 @@ var loginDiv = document.getElementById('login');
 var tokenInput = document.getElementById('tokenInput');
 
 // Mentett token betöltése
-var savedToken = localStorage.getItem('ipadclaw_token');
+var savedToken = localStorage.getItem('vomyclaw_token');
 if (savedToken) {
   TOKEN = savedToken;
   loginDiv.style.display = 'none';
@@ -169,7 +221,7 @@ tokenInput.addEventListener('keydown', function(e) {
 });
 
 function logout() {
-  localStorage.removeItem('ipadclaw_token');
+  localStorage.removeItem('vomyclaw_token');
   TOKEN = '';
   loginDiv.style.display = '';
   tokenInput.value = '';
@@ -180,7 +232,7 @@ function doLogin() {
   var t = tokenInput.value.trim();
   if (!t) return;
   TOKEN = t;
-  localStorage.setItem('ipadclaw_token', t);
+  localStorage.setItem('vomyclaw_token', t);
   loginDiv.style.display = 'none';
   addMsg('Csatlakozva. Miben segíthetek?', 'bot');
 }
@@ -241,6 +293,15 @@ function sendMsg() {
   };
 
   xhr.send(JSON.stringify({ text: text }));
+}
+
+function showTab(name) {
+  document.getElementById('tab-chat-panel').style.display = name === 'chat' ? '' : 'none';
+  document.getElementById('tab-calendar-panel').style.display = name === 'calendar' ? '' : 'none';
+  document.getElementById('chat-footer').style.display = name === 'chat' ? '' : 'none';
+  document.getElementById('tab-chat').className = 'tab-btn' + (name === 'chat' ? ' active' : '');
+  document.getElementById('tab-calendar').className = 'tab-btn' + (name === 'calendar' ? ' active' : '');
+  if (name === 'calendar') { loadCalendar(); }
 }
 </script>
 </body>
