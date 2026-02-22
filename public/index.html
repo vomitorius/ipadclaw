@@ -304,11 +304,140 @@ function showTab(name) {
   if (name === 'calendar') { loadCalendar(); }
 }
 
-// Calendar stubs - Task 3-ban keru implementalasra
-function loadCalendar() {}
-function calPrev() {}
-function calNext() {}
-function closePopup() {}
+// --- CALENDAR ---
+var calYear = new Date().getFullYear();
+var calMonth = new Date().getMonth() + 1;
+var calEvents = [];
+
+var MONTHS = ['Január','Február','Március','Április','Május','Június',
+              'Július','Augusztus','Szeptember','Október','November','December'];
+var DAYS = ['H','K','Sz','Cs','P','Sz','V'];
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 1) { calMonth = 12; calYear--; }
+  loadCalendar();
+}
+function calNext() {
+  calMonth++;
+  if (calMonth > 12) { calMonth = 1; calYear++; }
+  loadCalendar();
+}
+
+function loadCalendar() {
+  document.getElementById('cal-title').textContent = MONTHS[calMonth-1] + ' ' + calYear;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', BASE + '/api/calendar?year=' + calYear + '&month=' + calMonth, true);
+  xhr.setRequestHeader('Authorization', 'Bearer ' + TOKEN);
+  xhr.onreadystatechange = function() {
+    if (xhr.readyState !== 4) return;
+    if (xhr.status === 200) {
+      calEvents = JSON.parse(xhr.responseText);
+      renderCalendar();
+    }
+  };
+  xhr.send();
+}
+
+function renderCalendar() {
+  var grid = document.getElementById('cal-grid');
+  var firstDay = new Date(calYear, calMonth - 1, 1).getDay();
+  firstDay = (firstDay === 0) ? 6 : firstDay - 1;
+  var daysInMonth = new Date(calYear, calMonth, 0).getDate();
+  var today = new Date();
+  var todayStr = today.getFullYear() + '-' +
+    String(today.getMonth()+1).padStart(2,'0') + '-' +
+    String(today.getDate()).padStart(2,'0');
+
+  var html = '<table style="width:100%;border-collapse:collapse;table-layout:fixed">';
+  html += '<tr>';
+  for (var d = 0; d < 7; d++) {
+    html += '<th style="text-align:center;padding:4px 0;color:#888;font-size:12px;font-weight:normal">' + DAYS[d] + '</th>';
+  }
+  html += '</tr><tr>';
+
+  var col = 0;
+  for (var i = 0; i < firstDay; i++) {
+    html += '<td></td>'; col++;
+  }
+
+  for (var day = 1; day <= daysInMonth; day++) {
+    var dateStr = calYear + '-' + String(calMonth).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+    var dayEvents = calEvents.filter(function(e) { return e.date === dateStr; });
+    var isToday = dateStr === todayStr;
+
+    var cellStyle = 'text-align:center;padding:2px 0;vertical-align:top;cursor:' + (dayEvents.length ? 'pointer' : 'default');
+    var numStyle = 'display:inline-block;width:28px;height:28px;line-height:28px;border-radius:50%;font-size:14px;' +
+      (isToday ? 'background:#e94560;color:white;font-weight:bold' : 'color:#eee');
+
+    var dots = '';
+    var colors = [];
+    dayEvents.forEach(function(e) {
+      if (colors.indexOf(e.color) < 0) colors.push(e.color);
+    });
+    colors.forEach(function(c) {
+      dots += '<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:' + c + ';margin:1px"></span>';
+    });
+
+    var onclick = dayEvents.length ? 'onclick="showDayEvents(\'' + dateStr + '\')"' : '';
+    html += '<td style="' + cellStyle + '" ' + onclick + '>';
+    html += '<span style="' + numStyle + '">' + day + '</span>';
+    if (dots) html += '<div>' + dots + '</div>';
+    html += '</td>';
+
+    col++;
+    if (col % 7 === 0 && day < daysInMonth) html += '</tr><tr>';
+  }
+  while (col % 7 !== 0) { html += '<td></td>'; col++; }
+  html += '</tr></table>';
+  grid.innerHTML = html;
+}
+
+function showDayEvents(dateStr) {
+  var dayEvents = calEvents.filter(function(e) { return e.date === dateStr; });
+  if (!dayEvents.length) return;
+  var parts = dateStr.split('-');
+  var label = parts[2] + '. ' + MONTHS[parseInt(parts[1])-1];
+
+  var evList = document.getElementById('cal-events');
+  var html = '<div style="font-size:13px;color:#888;margin-bottom:6px">' + label + '</div>';
+  dayEvents.forEach(function(e) {
+    var evJson = JSON.stringify(e).replace(/"/g, '&quot;');
+    html += '<div onclick="showEventDetail(' + evJson + ')" ';
+    html += 'style="background:#16213e;border-left:3px solid ' + e.color + ';border-radius:6px;padding:10px 12px;margin-bottom:8px;cursor:pointer">';
+    html += '<div style="font-weight:bold;color:#eee;font-size:15px">' + e.title + '</div>';
+    if (e.startTime) {
+      html += '<div style="color:#888;font-size:13px;margin-top:2px">' + e.startTime;
+      if (e.endTime) html += ' - ' + e.endTime;
+      html += '</div>';
+    } else if (e.allDay) {
+      html += '<div style="color:#888;font-size:13px">Egész napos</div>';
+    }
+    html += '</div>';
+  });
+  evList.innerHTML = html;
+}
+
+function showEventDetail(ev) {
+  var src = ev.source === 'calendar' ? 'Általános naptár' : 'Vomitorius naptár';
+  var time = '';
+  if (ev.startTime) {
+    time = ev.startTime;
+    if (ev.endTime) time += ' - ' + ev.endTime;
+  } else if (ev.allDay) {
+    time = 'Egész napos';
+  }
+  var html = '<div style="color:' + ev.color + ';font-size:12px;margin-bottom:4px">' + src + '</div>';
+  html += '<div style="font-size:20px;font-weight:bold;color:#eee;margin-bottom:8px">' + ev.title + '</div>';
+  if (time) html += '<div style="color:#aaa;margin-bottom:8px">' + time + '</div>';
+  html += '<div style="color:#888;font-size:13px">' + ev.date + '</div>';
+  document.getElementById('cal-popup-content').innerHTML = html;
+  document.getElementById('cal-popup').style.display = '';
+}
+
+function closePopup() {
+  document.getElementById('cal-popup').style.display = 'none';
+}
 </script>
 </body>
 </html>
