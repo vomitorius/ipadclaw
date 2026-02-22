@@ -141,7 +141,7 @@
 
 <script>
 var TOKEN = '';
-var BASE = window.location.href.replace(//[^/]*$/, '').replace(//+$/, '');
+var BASE = window.location.origin + window.location.pathname.replace(/\/$/, '').replace(/\/index\.html$/, '');
 var chat = document.getElementById('chat');
 var input = document.getElementById('input');
 var sendBtn = document.getElementById('send');
