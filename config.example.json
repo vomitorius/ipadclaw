@@ -3,5 +3,6 @@
   "token": "change-me-secret-token",
   "openclaw": "/home/linuxbrew/.linuxbrew/bin/openclaw",
   "sessionTo": "+11111111111",
-  "audioDir": "/tmp/ipadclaw-audio"
+  "audioDir": "/tmp/ipadclaw-audio",
+  "vaultPath": "/home/csabaszabo/webdav/myvault"
 }

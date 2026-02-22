@@ -1,5 +1,5 @@
 import http from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { createReadStream, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -18,6 +18,45 @@ const MIME = {
 async function loadConfig() {
   const raw = await readFile(path.join(__dirname, 'config.json'), 'utf8');
   return JSON.parse(raw);
+}
+
+export async function parseCalendarFile(filePath, source) {
+  const raw = await readFile(filePath, 'utf8');
+  const match = raw.match(/^---\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const fm = {};
+  for (const line of match[1].split('\n')) {
+    const colon = line.indexOf(':');
+    if (colon < 0) continue;
+    const key = line.slice(0, colon).trim();
+    const val = line.slice(colon + 1).trim();
+    fm[key] = val === 'null' ? null : val;
+  }
+  if (!fm.date) return null;
+  return {
+    id: filePath,
+    title: fm.title || path.basename(filePath, '.md'),
+    date: fm.date,
+    startTime: fm.startTime || null,
+    endTime: fm.endTime || null,
+    allDay: fm.allDay === 'true',
+    source,
+    color: source === 'calendar' ? '#4a9eff' : '#e94560'
+  };
+}
+
+export async function parseCalendarDir(dirPath, source) {
+  let files;
+  try {
+    files = await readdir(dirPath);
+  } catch { return []; }
+  const events = [];
+  for (const f of files) {
+    if (!f.endsWith('.md')) continue;
+    const ev = await parseCalendarFile(path.join(dirPath, f), source);
+    if (ev) events.push(ev);
+  }
+  return events;
 }
 
 export function parseAgentResponse(jsonString) {
@@ -81,6 +120,36 @@ function router(req, res, config) {
       res.end(JSON.stringify({ error: 'Unauthorized' }));
       return;
     }
+  }
+
+  if (url.pathname === '/api/calendar') {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!config.token || token !== config.token) {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Unauthorized' }));
+      return;
+    }
+  }
+
+  if (url.pathname === '/api/calendar' && req.method === 'GET') {
+    const year = parseInt(url.searchParams.get('year') || new Date().getFullYear());
+    const month = parseInt(url.searchParams.get('month') || (new Date().getMonth() + 1));
+    const prefix = String(year) + '-' + String(month).padStart(2, '0');
+    const vaultPath = config.vaultPath || '';
+    Promise.all([
+      parseCalendarDir(path.join(vaultPath, 'calendar'), 'calendar'),
+      parseCalendarDir(path.join(vaultPath, 'vnaptár'), 'vnaptár')
+    ]).then(([ev1, ev2]) => {
+      const all = ev1.concat(ev2).filter(e => e.date.startsWith(prefix));
+      all.sort((a, b) => (a.date + (a.startTime||'00:00')).localeCompare(b.date + (b.startTime||'00:00')));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(all));
+    }).catch(e => {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: e.message }));
+    });
+    return;
   }
 
   if (url.pathname === '/chat' && req.method === 'POST') {
