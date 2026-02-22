@@ -30,7 +30,7 @@ export async function parseCalendarFile(filePath, source) {
     if (colon < 0) continue;
     const key = line.slice(0, colon).trim();
     const val = line.slice(colon + 1).trim();
-    fm[key] = val === 'null' ? null : val;
+    fm[key] = val === 'null' ? null : val.replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1');
   }
   if (!fm.date) return null;
   return {
